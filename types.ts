@@ -1,5 +1,5 @@
-// Fix: Add React import for JSX.Element type
-import React from 'react';
+// Fix: Use namespace import for React to ensure JSX types are available.
+import * as React from 'react';
 
 export interface Developer {
   id: number;

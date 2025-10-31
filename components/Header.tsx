@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { HomeIcon } from '../constants';
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,8 +20,10 @@ const Header: React.FC = () => {
     <header className={`sticky top-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md' : 'bg-transparent'}`}>
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">
-            Real Estate Hub
+          <div className="flex items-center text-2xl font-bold">
+              <HomeIcon className="w-8 h-8 mr-2 text-primary"/>
+              <span className="text-secondary">i</span>
+              <span className="text-primary">WantPH</span>
           </div>
 
           <div className="hidden md:flex items-center space-x-8">

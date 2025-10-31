@@ -46,6 +46,12 @@ export const StarIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const SearchIcon = ({ className }: { className?: string }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+);
+
 
 // Mock Data
 export const DEVELOPERS: Developer[] = [
@@ -97,7 +103,7 @@ export const BENEFITS: Benefit[] = [
 ];
 
 export const TESTIMONIALS: Testimonial[] = [
-    { id: 1, quote: "The team at Real Estate Hub made finding our first home a breeze. Their professionalism and dedication are unmatched. We couldn't be happier!", clientName: 'Juan Dela Cruz', clientRole: 'New Homeowner', clientImage: 'https://picsum.photos/100/100?random=21', rating: 5 },
+    { id: 1, quote: "The team at iWantPH made finding our first home a breeze. Their professionalism and dedication are unmatched. We couldn't be happier!", clientName: 'Juan Dela Cruz', clientRole: 'New Homeowner', clientImage: 'https://picsum.photos/100/100?random=21', rating: 5 },
     { id: 2, quote: "As an investor, I need quick and reliable information. This platform provided everything I needed, from market trends to the best deals. Highly recommended!", clientName: 'Maria Santos', clientRole: 'Property Investor', clientImage: 'https://picsum.photos/100/100?random=22', rating: 5 },
     { id: 3, quote: "Their selection of properties from different developers is fantastic. It's truly a one-stop-shop for anyone looking to buy property in the Philippines.", clientName: 'Robert Lim', clientRole: 'OFW Buyer', clientImage: 'https://picsum.photos/100/100?random=23', rating: 4 },
 ];
