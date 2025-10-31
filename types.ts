@@ -1,11 +1,27 @@
 // Fix: Use namespace import for React to ensure JSX types are available.
 import * as React from 'react';
 
+// New type for icon names to avoid serializing React elements
+export type IconName = 
+  | 'HomeIcon' 
+  | 'BuildingIcon' 
+  | 'MapPinIcon' 
+  | 'StoreIcon' 
+  | 'CollectionIcon' 
+  | 'ClockIcon'
+  | 'BenefitCheckIcon'
+  | 'BenefitDealIcon'
+  | 'BenefitThumbsUpIcon'
+  | 'ServiceBuyIcon'
+  | 'ServiceSellIcon'
+  | 'ServiceFinanceIcon'
+  | 'ServiceInvestIcon';
+
 export interface Developer {
   id: number;
   name: string;
   logoUrl: string;
-  badge?: 'Premium Developer' | 'Affordable Housing' | 'Most Trusted';
+  badge?: 'Premium Developer' | 'Affordable Housing' | 'Most Trusted' | '';
   projects: Project[];
 }
 
@@ -33,11 +49,11 @@ export interface Property {
 
 export interface Category {
   name: 'House & Lot' | 'Condominium' | 'Lot Only' | 'Commercial Properties' | 'Townhouses' | 'Pre-selling / RFO';
-  icon: JSX.Element;
+  icon: IconName;
 }
 
 export interface Benefit {
-  icon: JSX.Element;
+  icon: IconName;
   title: string;
   description: string;
 }
@@ -52,7 +68,7 @@ export interface Testimonial {
 }
 
 export interface Service {
-    icon: JSX.Element;
+    icon: IconName;
     title: string;
     description: string;
 }
@@ -60,4 +76,10 @@ export interface Service {
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+}
+
+export interface ContactInfo {
+  phone: string;
+  email: string;
+  address: string;
 }

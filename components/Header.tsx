@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { HomeIcon } from '../constants';
+import { useRouter } from '../context/RouterContext';
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { navigate } = useRouter();
 
   const navLinks = ['Home', 'Developers', 'Properties', 'Projects', 'Services', 'About', 'Contact'];
 
@@ -32,9 +34,9 @@ const Header: React.FC = () => {
                 {link}
               </a>
             ))}
-            <button className="bg-secondary text-white px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition-all transform hover:scale-105">
-              Sign Up
-            </button>
+            <a href="#/admin" onClick={(e) => { e.preventDefault(); navigate('#/admin'); }} className="bg-secondary text-white px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition-all transform hover:scale-105">
+              Login (admin)
+            </a>
           </div>
 
           <div className="md:hidden">
@@ -53,9 +55,9 @@ const Header: React.FC = () => {
                 {link}
               </a>
             ))}
-             <button className="w-full mt-4 bg-secondary text-white px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition-all">
-              Sign Up
-            </button>
+             <a href="#/admin" onClick={(e) => { e.preventDefault(); navigate('#/admin'); setIsOpen(false); }} className="block text-center w-full mt-4 bg-secondary text-white px-6 py-2 rounded-full font-semibold hover:bg-opacity-90 transition-all">
+              Login (admin)
+            </a>
           </div>
         )}
       </nav>

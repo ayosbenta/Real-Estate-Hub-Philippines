@@ -1,7 +1,9 @@
 
 import React from 'react';
+import { useData } from '../context/DataContext';
 
 const Contact: React.FC = () => {
+  const { contactInfo } = useData();
   return (
     <section id="contact" className="py-20 bg-white">
       <div className="container mx-auto px-6">
@@ -14,9 +16,9 @@ const Contact: React.FC = () => {
             <div className="bg-light-gray p-8 rounded-lg h-full">
               <h3 className="text-2xl font-bold text-primary mb-6">Contact Information</h3>
               <div className="space-y-4 text-gray-700">
-                <p><strong>Phone:</strong> +63 917 123 4567</p>
-                <p><strong>Email:</strong> inquire@realestatehub.ph</p>
-                <p><strong>Address:</strong> 123 Ayala Avenue, Makati City, Philippines</p>
+                <p><strong>Phone:</strong> {contactInfo.phone}</p>
+                <p><strong>Email:</strong> {contactInfo.email}</p>
+                <p><strong>Address:</strong> {contactInfo.address}</p>
               </div>
               <div className="mt-8">
                 <h4 className="font-semibold text-primary mb-3">Connect with us:</h4>

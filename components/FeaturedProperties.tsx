@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { PROPERTIES } from '../constants';
+import { useData } from '../context/DataContext';
 import { Property } from '../types';
 import { MapPinIcon } from '../constants';
 
@@ -35,21 +35,22 @@ const PropertyCard: React.FC<{ property: Property }> = ({ property }) => {
 };
 
 const FeaturedProperties: React.FC = () => {
+  const { properties } = useData();
   const [filter, setFilter] = useState('All');
   const [sort, setSort] = useState('price_asc');
 
   const filteredProperties = useMemo(() => {
-    let properties = [...PROPERTIES];
+    let currentProperties = [...properties];
     if (filter !== 'All') {
-      properties = properties.filter(p => p.listingType === filter);
+      currentProperties = currentProperties.filter(p => p.listingType === filter);
     }
-    properties.sort((a, b) => {
+    currentProperties.sort((a, b) => {
       if (sort === 'price_asc') return a.price - b.price;
       if (sort === 'price_desc') return b.price - a.price;
       return 0;
     });
-    return properties;
-  }, [filter, sort]);
+    return currentProperties;
+  }, [filter, sort, properties]);
 
   return (
     <section id="properties" className="py-20 bg-white">

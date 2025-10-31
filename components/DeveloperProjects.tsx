@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
-import { DEVELOPERS } from '../constants';
+import React, { useState, useMemo } from 'react';
+import { useData } from '../context/DataContext';
 
 const DeveloperProjects: React.FC = () => {
-  const developersWithProjects = DEVELOPERS.filter(d => d.projects && d.projects.length > 0);
+  const { developers } = useData();
+  const developersWithProjects = useMemo(() => developers.filter(d => d.projects && d.projects.length > 0), [developers]);
+  
   const [activeTab, setActiveTab] = useState(developersWithProjects[0]?.id || 0);
 
   const activeDeveloper = developersWithProjects.find(dev => dev.id === activeTab);

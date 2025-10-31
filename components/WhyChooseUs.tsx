@@ -1,8 +1,9 @@
-
 import React from 'react';
-import { BENEFITS } from '../constants';
+import { useData } from '../context/DataContext';
+import { Icon } from '../constants';
 
 const WhyChooseUs: React.FC = () => {
+  const { benefits } = useData();
   return (
     <section id="about" className="py-20 bg-primary text-white">
       <div className="container mx-auto px-6">
@@ -11,10 +12,10 @@ const WhyChooseUs: React.FC = () => {
           <p className="text-gray-300 mt-2 max-w-2xl mx-auto">We provide a seamless and trustworthy experience for your real estate journey, backed by industry leaders and professional expertise.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          {BENEFITS.map((benefit, index) => (
+          {benefits.map((benefit, index) => (
             <div key={index} className="text-center p-6 bg-white bg-opacity-10 rounded-lg">
               <div className="flex justify-center mb-4">
-                {benefit.icon}
+                <Icon name={benefit.icon} className="w-12 h-12 text-secondary" />
               </div>
               <h3 className="text-xl font-bold text-secondary mb-2">{benefit.title}</h3>
               <p className="text-gray-200">{benefit.description}</p>
