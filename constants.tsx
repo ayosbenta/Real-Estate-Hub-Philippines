@@ -93,6 +93,31 @@ export const ServiceInvestIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const KeyIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>
+);
+
+export const UsersIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 016-6h6a6 6 0 016 6v1h-3" />
+    </svg>
+);
+
+export const BriefcaseIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" />
+    </svg>
+);
+
+export const DollarSignIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" />
+    </svg>
+);
+
+
 const iconMap: Record<IconName, React.FC<{className?: string}>> = {
     HomeIcon,
     BuildingIcon,
@@ -107,6 +132,10 @@ const iconMap: Record<IconName, React.FC<{className?: string}>> = {
     ServiceSellIcon,
     ServiceFinanceIcon,
     ServiceInvestIcon,
+    KeyIcon,
+    UsersIcon,
+    BriefcaseIcon,
+    DollarSignIcon,
 };
 
 export const Icon: React.FC<{ name: IconName; className?: string }> = ({ name, className }) => {

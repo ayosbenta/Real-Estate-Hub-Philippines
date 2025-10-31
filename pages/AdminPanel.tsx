@@ -30,6 +30,70 @@ type FormField = {
     required?: boolean;
 };
 
+// --- Dashboard Overview Component ---
+const DashboardOverview: React.FC = () => {
+    const { developers, properties, testimonials, services } = useData();
+
+    const stats = [
+        { title: 'Total Developers', value: developers.length, icon: 'BuildingIcon' as IconName, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+        { title: 'Total Properties', value: properties.length, icon: 'HomeIcon' as IconName, color: 'text-green-500', bgColor: 'bg-green-100' },
+        { title: 'Properties For Sale', value: properties.filter(p => p.listingType === 'For Sale').length, icon: 'DollarSignIcon' as IconName, color: 'text-yellow-500', bgColor: 'bg-yellow-100' },
+        { title: 'Properties For Rent', value: properties.filter(p => p.listingType === 'For Rent').length, icon: 'KeyIcon' as IconName, color: 'text-indigo-500', bgColor: 'bg-indigo-100' },
+        { title: 'Client Testimonials', value: testimonials.length, icon: 'UsersIcon' as IconName, color: 'text-pink-500', bgColor: 'bg-pink-100' },
+        { title: 'Available Services', value: services.length, icon: 'BriefcaseIcon' as IconName, color: 'text-purple-500', bgColor: 'bg-purple-100' },
+    ];
+
+    const StatCard: React.FC<{ title: string; value: number; icon: IconName; color: string; bgColor: string; }> = ({ title, value, icon, color, bgColor }) => (
+        <div className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-transform transform hover:-translate-y-1">
+            <div className={`p-3 rounded-full ${bgColor}`}>
+                <Icon name={icon} className={`w-8 h-8 ${color}`} />
+            </div>
+            <div>
+                <p className="text-gray-500 text-sm font-medium">{title}</p>
+                <p className="text-3xl font-bold text-primary">{value}</p>
+            </div>
+        </div>
+    );
+
+    const recentProperties = [...properties].sort((a, b) => b.id - a.id).slice(0, 5);
+
+    return (
+        <div>
+            <h3 className="text-3xl font-bold text-primary mb-6">Dashboard Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {stats.map(stat => <StatCard key={stat.title} {...stat} />)}
+            </div>
+
+            <div className="mt-12">
+                <h3 className="text-2xl font-bold text-primary mb-4">Recently Added Properties</h3>
+                <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                    <table className="min-w-full">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="p-4 text-left font-semibold text-gray-600">Property Title</th>
+                                <th className="p-4 text-left font-semibold text-gray-600">Location</th>
+                                <th className="p-4 text-left font-semibold text-gray-600">Price</th>
+                                <th className="p-4 text-left font-semibold text-gray-600">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {recentProperties.map(prop => (
+                                <tr key={prop.id} className="border-b hover:bg-gray-50">
+                                    <td className="p-4 font-medium text-primary">{prop.title}</td>
+                                    <td className="p-4 text-gray-700">{prop.location}</td>
+                                    <td className="p-4 text-gray-700">₱{prop.price.toLocaleString()}</td>
+                                    <td className="p-4 text-gray-700">{prop.listingType}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 // --- Generic Section Management Component ---
 const ManageSection: React.FC<{
     title: string;
@@ -501,10 +565,10 @@ const ManageContactInfo: React.FC = () => {
 const AdminPanel: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const { categories, setCategories, services, setServices, benefits, setBenefits } = useData();
-  const [activeTab, setActiveTab] = useState('Developers');
+  const [activeTab, setActiveTab] = useState('Overview');
   const { navigate } = useRouter();
   
-  const tabs = ['Developers', 'Properties', 'Testimonials', 'Contact Info', 'Categories', 'Services', 'Benefits'];
+  const tabs = ['Overview', 'Developers', 'Properties', 'Testimonials', 'Contact Info', 'Categories', 'Services', 'Benefits'];
 
   if (!isAuthenticated) {
     // The redirect is handled by the AuthContext, which will navigate away.
@@ -518,6 +582,7 @@ const AdminPanel: React.FC = () => {
   
     const renderContent = () => {
       switch(activeTab) {
+          case 'Overview': return <DashboardOverview />;
           case 'Developers': return <ManageDevelopers />;
           case 'Properties': return <ManageProperties />;
           case 'Testimonials': return <ManageTestimonials />;

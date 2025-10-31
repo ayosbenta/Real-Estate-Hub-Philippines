@@ -15,7 +15,11 @@ export type IconName =
   | 'ServiceBuyIcon'
   | 'ServiceSellIcon'
   | 'ServiceFinanceIcon'
-  | 'ServiceInvestIcon';
+  | 'ServiceInvestIcon'
+  | 'KeyIcon'
+  | 'UsersIcon'
+  | 'BriefcaseIcon'
+  | 'DollarSignIcon';
 
 export interface Developer {
   id: number;
