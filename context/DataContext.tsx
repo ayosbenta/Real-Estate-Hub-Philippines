@@ -24,38 +24,53 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const useStickyState = <T,>(key: string, initialData: T): [T, Setter<T>] => {
-  const [state, setState] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialData;
-    } catch (error) {
-      console.error(`Error reading from localStorage key "${key}":`, error);
-      return initialData;
-    }
-  });
-
-  // Fix: The try-catch block had a syntax error. The catch clause must be followed by a block statement enclosed in curly braces {}.
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(state));
-    } catch (error) {
-      console.error(`Error writing to localStorage key "${key}":`, error);
-    }
-  }, [key, state]);
-
-  return [state, setState];
-};
-
-
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [developers, setDevelopers] = useStickyState<Developer[]>('data_developers', DEVELOPERS);
-  const [properties, setProperties] = useStickyState<Property[]>('data_properties', PROPERTIES);
-  const [categories, setCategories] = useStickyState<Category[]>('data_categories', CATEGORIES);
-  const [benefits, setBenefits] = useStickyState<Benefit[]>('data_benefits', BENEFITS);
-  const [testimonials, setTestimonials] = useStickyState<Testimonial[]>('data_testimonials', TESTIMONIALS);
-  const [services, setServices] = useStickyState<Service[]>('data_services', SERVICES);
-  const [contactInfo, setContactInfo] = useStickyState<ContactInfo>('data_contactInfo', CONTACT_INFO);
+  const [developers, setDevelopers] = useState<Developer[]>(DEVELOPERS);
+  const [properties, setProperties] = useState<Property[]>(PROPERTIES);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [benefits, setBenefits] = useState<Benefit[]>(BENEFITS);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(TESTIMONIALS);
+  const [services, setServices] = useState<Service[]>(SERVICES);
+  const [contactInfo, setContactInfo] = useState<ContactInfo>(CONTACT_INFO);
+
+  useEffect(() => {
+    const fetchData = async () => {
+        console.log("Fetching all data from Supabase...");
+        try {
+            const [
+                developersRes,
+                propertiesRes,
+                categoriesRes,
+                benefitsRes,
+                testimonialsRes,
+                servicesRes,
+                contactInfoRes
+            ] = await Promise.all([
+                supabase.from('developers').select('*').order('id'),
+                supabase.from('properties').select('*').order('id'),
+                supabase.from('categories').select('*').order('id'),
+                supabase.from('benefits').select('*').order('id'),
+                supabase.from('testimonials').select('*').order('id'),
+                supabase.from('services').select('*').order('id'),
+                supabase.from('contact_info').select('*').limit(1).single()
+            ]);
+
+            if (developersRes.data) setDevelopers(developersRes.data as Developer[]);
+            if (propertiesRes.data) setProperties(propertiesRes.data);
+            if (categoriesRes.data) setCategories(categoriesRes.data);
+            if (benefitsRes.data) setBenefits(benefitsRes.data);
+            if (testimonialsRes.data) setTestimonials(testimonialsRes.data);
+            if (servicesRes.data) setServices(servicesRes.data);
+            if (contactInfoRes.data) setContactInfo(contactInfoRes.data);
+
+        } catch (error) {
+            console.error("Error fetching data from Supabase:", error);
+            // Fallback to initial data if fetch fails
+        }
+    };
+
+    fetchData();
+  }, []);
   
   const value = {
     developers, setDevelopers,

@@ -3,10 +3,22 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Property } from '../types';
 import { MapPinIcon } from '../constants';
+import { useRouter } from '../context/RouterContext';
 
 const PropertyCard: React.FC<{ property: Property }> = ({ property }) => {
+  const { navigate } = useRouter();
+
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`#/property/${property.id}`);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden group transform hover:-translate-y-2 transition-transform duration-300">
+    <div 
+      className="bg-white rounded-lg shadow-lg overflow-hidden group transform hover:-translate-y-2 transition-transform duration-300 cursor-pointer"
+      onClick={handleViewDetails}
+    >
       <div className="relative">
         <img src={property.imageUrl} alt={property.title} className="w-full h-56 object-cover" />
         <div className="absolute top-4 left-4 bg-secondary text-white px-3 py-1 text-sm font-semibold rounded-full">{property.listingType}</div>
@@ -26,7 +38,9 @@ const PropertyCard: React.FC<{ property: Property }> = ({ property }) => {
           <span>{property.bathrooms} baths</span>
           <span>{property.sqm} sqm</span>
         </div>
-        <button className="mt-6 w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+        <button 
+          onClick={handleViewDetails}
+          className="mt-6 w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
           View Details
         </button>
       </div>

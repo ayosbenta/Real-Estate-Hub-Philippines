@@ -37,7 +37,7 @@ export interface Project {
 }
 
 export interface Property {
-  id: number;
+  id?: number;
   title: string;
   price: number;
   location: string;
@@ -49,21 +49,24 @@ export interface Property {
   bedrooms: number;
   bathrooms: number;
   developerId: number;
+  description?: string;
 }
 
 export interface Category {
+  id?: number;
   name: 'House & Lot' | 'Condominium' | 'Lot Only' | 'Commercial Properties' | 'Townhouses' | 'Pre-selling / RFO';
   icon: IconName;
 }
 
 export interface Benefit {
+  id?: number;
   icon: IconName;
   title: string;
   description: string;
 }
 
 export interface Testimonial {
-  id: number;
+  id?: number;
   quote: string;
   clientName: string;
   clientRole: string;
@@ -72,6 +75,7 @@ export interface Testimonial {
 }
 
 export interface Service {
+    id?: number;
     icon: IconName;
     title: string;
     description: string;
@@ -83,6 +87,7 @@ export interface ChatMessage {
 }
 
 export interface ContactInfo {
+  id?: number;
   phone: string;
   email: string;
   address: string;

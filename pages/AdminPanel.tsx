@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Developer, Testimonial, Property, Category, Benefit, Service, ContactInfo, IconName } from '../types';
 import { Icon } from '../constants';
 import { useRouter } from '../context/RouterContext';
+import { supabase } from '../supabase/client';
 
 // --- Reusable Modal Component ---
 const Modal: React.FC<{ title: string, isOpen: boolean, onClose: () => void, children: React.ReactNode }> = ({ title, isOpen, onClose, children }) => {
@@ -21,7 +23,6 @@ const Modal: React.FC<{ title: string, isOpen: boolean, onClose: () => void, chi
 
 // --- Field Definitions for Generic Form ---
 type FormField = {
-    // Fix: Using `keyof any` (`string | number | symbol`) caused type errors for React keys and event handlers expecting `string`. Since all form field names are strings, changing the type to `string` is a safe and correct fix.
     name: string;
     label: string;
     type: 'text' | 'textarea' | 'number' | 'select' | 'icon-select';
@@ -54,7 +55,7 @@ const DashboardOverview: React.FC = () => {
         </div>
     );
 
-    const recentProperties = [...properties].sort((a, b) => b.id - a.id).slice(0, 5);
+    const recentProperties = [...properties].sort((a, b) => (b.id ?? 0) - (a.id ?? 0)).slice(0, 5);
 
     return (
         <div>
@@ -97,13 +98,15 @@ const DashboardOverview: React.FC = () => {
 const ManageSection: React.FC<{
     title: string;
     items: any[];
-    setItems: React.Dispatch<React.SetStateAction<any[]>>;
+    onSave: (item: any) => Promise<void>;
+    onDelete: (id: number) => Promise<void>;
     formFields: FormField[];
     displayColumns: { header: string; accessor: (item: any) => React.ReactNode }[];
     noun: string;
-}> = ({ title, items, setItems, formFields, displayColumns, noun }) => {
+}> = ({ title, items, onSave, onDelete, formFields, displayColumns, noun }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentItem, setCurrentItem] = useState<any | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const openModal = (item: any | null = null) => {
         const initialItem = formFields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
@@ -116,24 +119,31 @@ const ManageSection: React.FC<{
         setCurrentItem(null);
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentItem) return;
-
-        setItems(prev => {
-            if (currentItem.id) {
-                return prev.map(i => i.id === currentItem.id ? currentItem : i);
-            } else {
-                const newId = Math.max(0, ...prev.map(i => i.id || 0)) + 1;
-                return [...prev, { ...currentItem, id: newId }];
-            }
-        });
-        closeModal();
+        setIsSaving(true);
+        try {
+            await onSave(currentItem);
+            closeModal();
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error(`Error saving ${noun}:`, error);
+            alert(`Failed to save ${noun}. Error: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         if (window.confirm(`Are you sure you want to delete this ${noun}?`)) {
-            setItems(prev => prev.filter(i => i.id !== id));
+            try {
+                await onDelete(id);
+            } catch (error) {
+                 const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+                 console.error(`Error deleting ${noun}:`, error);
+                 alert(`Failed to delete ${noun}. Error: ${errorMessage}`);
+            }
         }
     };
     
@@ -192,7 +202,9 @@ const ManageSection: React.FC<{
                             )}
                         </div>
                     ))}
-                    <button type="submit" className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4">Save</button>
+                    <button type="submit" disabled={isSaving} className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4 disabled:bg-gray-400">
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
                 </form>
             </Modal>
         </div>
@@ -204,6 +216,7 @@ const ManageDevelopers: React.FC = () => {
     const { developers, setDevelopers } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentDeveloper, setCurrentDeveloper] = useState<Partial<Developer> | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const openModal = (dev: Partial<Developer> | null = null) => {
         const developerData = dev || { name: '', logoUrl: '', badge: '', projects: [] };
@@ -216,34 +229,48 @@ const ManageDevelopers: React.FC = () => {
         setCurrentDeveloper(null);
     };
     
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentDeveloper || !currentDeveloper.name) {
-            alert('Developer name is required.');
-            return;
-        }
+        if (!currentDeveloper) return;
+        setIsSaving(true);
+        try {
+            const developerData = {
+                name: currentDeveloper.name,
+                logoUrl: currentDeveloper.logoUrl,
+                badge: currentDeveloper.badge || null,
+            };
 
-        setDevelopers(prev => {
-            if (currentDeveloper.id) {
-                return prev.map(d => d.id === currentDeveloper.id ? currentDeveloper as Developer : d);
-            } else {
-                const newDeveloper: Developer = {
-                    projects: [],
-                    ...currentDeveloper,
-                    id: Date.now(), // Use timestamp for a simple unique ID
-                } as Developer;
-                return [...prev, newDeveloper];
+            if (currentDeveloper.id) { // Update
+                const { data, error } = await supabase.from('developers').update(developerData).eq('id', currentDeveloper.id).select().single();
+                if (error) throw error;
+                setDevelopers(prev => prev.map(d => d.id === data.id ? { ...d, ...data } : d));
+            } else { // Insert
+                const { data, error } = await supabase.from('developers').insert(developerData).select().single();
+                if (error) throw error;
+                setDevelopers(prev => [...prev, { ...data, projects: [] } as Developer]);
             }
-        });
-        
-        closeModal();
+            closeModal();
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error('Error saving developer:', error);
+            alert(`Failed to save developer. Error: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
     
-    const handleDelete = (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this developer?')) {
-            return;
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this developer? This might affect properties associated with it.')) return;
+        
+        try {
+            const { error } = await supabase.from('developers').delete().eq('id', id);
+            if (error) throw error;
+            setDevelopers(prev => prev.filter(d => d.id !== id));
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error('Error deleting developer:', error);
+            alert(`Failed to delete developer. Error: ${errorMessage}`);
         }
-        setDevelopers(prev => prev.filter(d => d.id !== id));
     };
 
     return (
@@ -302,8 +329,8 @@ const ManageDevelopers: React.FC = () => {
                             <option value="Most Trusted">Most Trusted</option>
                         </select>
                     </div>
-                    <button type="submit" className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4">
-                        Save
+                    <button type="submit" disabled={isSaving} className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4 disabled:bg-gray-400">
+                         {isSaving ? 'Saving...' : 'Save'}
                     </button>
                 </form>
             </Modal>
@@ -316,9 +343,10 @@ const ManageProperties: React.FC = () => {
     const { properties, setProperties, developers } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [current, setCurrent] = useState<Partial<Property> | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const openModal = (item: Partial<Property> | null = null) => {
-        setCurrent(item || { title: '', price: 0, location: '', type: 'Condominium', status: 'Pre-selling', listingType: 'For Sale', imageUrl: '', sqm: 0, bedrooms: 0, bathrooms: 0, developerId: developers[0]?.id || 0 });
+        setCurrent(item || { title: '', price: 0, location: '', type: 'Condominium', status: 'Pre-selling', listingType: 'For Sale', imageUrl: '', sqm: 0, bedrooms: 0, bathrooms: 0, developerId: developers[0]?.id || 0, description: '' });
         setIsModalOpen(true);
     };
 
@@ -327,23 +355,57 @@ const ManageProperties: React.FC = () => {
         setCurrent(null);
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!current) return;
-        setProperties(prev => {
-            if (current.id) {
-                return prev.map(p => p.id === current.id ? current as Property : p);
-            } else {
-                const newId = Math.max(0, ...prev.map(p => p.id)) + 1;
-                return [...prev, { ...current, id: newId } as Property];
+        setIsSaving(true);
+
+        try {
+            const propertyData = {
+                title: current.title,
+                price: current.price,
+                location: current.location,
+                type: current.type,
+                status: current.status,
+                listingType: current.listingType,
+                imageUrl: current.imageUrl,
+                sqm: current.sqm,
+                bedrooms: current.bedrooms,
+                bathrooms: current.bathrooms,
+                developerId: current.developerId,
+                description: current.description || null,
+            };
+
+            if (current.id) { // Update
+                const { data, error } = await supabase.from('properties').update(propertyData).eq('id', current.id).select().single();
+                if (error) throw error;
+                setProperties(prev => prev.map(p => p.id === data.id ? data : p));
+            } else { // Insert
+                const { data, error } = await supabase.from('properties').insert(propertyData).select().single();
+                if (error) throw error;
+                setProperties(prev => [...prev, data]);
             }
-        });
-        closeModal();
+            closeModal();
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error('Error saving property:', error);
+            alert(`Failed to save property. Error: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this property?')) {
-            setProperties(prev => prev.filter(p => p.id !== id));
+            try {
+                const { error } = await supabase.from('properties').delete().eq('id', id);
+                if (error) throw error;
+                setProperties(prev => prev.filter(p => p.id !== id));
+            } catch (error) {
+                const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+                console.error('Error deleting property:', error);
+                alert(`Failed to delete property. Error: ${errorMessage}`);
+            }
         }
     };
 
@@ -375,7 +437,7 @@ const ManageProperties: React.FC = () => {
                                 <td className="p-4">{getDeveloperName(item.developerId)}</td>
                                 <td className="p-4">
                                     <button onClick={() => openModal(item)} className="text-blue-600 hover:underline mr-4">Edit</button>
-                                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <button onClick={() => handleDelete(item.id!)} className="text-red-600 hover:underline">Delete</button>
                                 </td>
                             </tr>
                         ))}
@@ -390,7 +452,7 @@ const ManageProperties: React.FC = () => {
                         <input type="text" value={current?.title || ''} onChange={e => setCurrent({...current, title: e.target.value})} className="w-full p-2 border rounded-md" required/>
                     </div>
                      <div className="grid grid-cols-2 gap-4">
-                        <div><label>Price</label><input type="number" value={current?.price || 0} onChange={e => setCurrent({...current, price: parseFloat(e.target.value)})} className="w-full p-2 border rounded-md" required/></div>
+                        <div><label>Price</label><input type="number" value={current?.price ?? ''} onChange={e => setCurrent({...current, price: parseFloat(e.target.value) || 0})} className="w-full p-2 border rounded-md" required/></div>
                         <div><label>Location</label><input type="text" value={current?.location || ''} onChange={e => setCurrent({...current, location: e.target.value})} className="w-full p-2 border rounded-md" required/></div>
                     </div>
                      <div className="grid grid-cols-2 gap-4">
@@ -422,15 +484,21 @@ const ManageProperties: React.FC = () => {
                         </div>
                     </div>
                      <div className="grid grid-cols-3 gap-4">
-                        <div><label>SQM</label><input type="number" value={current?.sqm || 0} onChange={e => setCurrent({...current, sqm: parseInt(e.target.value)})} className="w-full p-2 border rounded-md" /></div>
-                        <div><label>Bedrooms</label><input type="number" value={current?.bedrooms || 0} onChange={e => setCurrent({...current, bedrooms: parseInt(e.target.value)})} className="w-full p-2 border rounded-md" /></div>
-                        <div><label>Bathrooms</label><input type="number" value={current?.bathrooms || 0} onChange={e => setCurrent({...current, bathrooms: parseInt(e.target.value)})} className="w-full p-2 border rounded-md" /></div>
+                        <div><label>SQM</label><input type="number" value={current?.sqm ?? ''} onChange={e => setCurrent({...current, sqm: parseInt(e.target.value, 10) || 0})} className="w-full p-2 border rounded-md" /></div>
+                        <div><label>Bedrooms</label><input type="number" value={current?.bedrooms ?? ''} onChange={e => setCurrent({...current, bedrooms: parseInt(e.target.value, 10) || 0})} className="w-full p-2 border rounded-md" /></div>
+                        <div><label>Bathrooms</label><input type="number" value={current?.bathrooms ?? ''} onChange={e => setCurrent({...current, bathrooms: parseInt(e.target.value, 10) || 0})} className="w-full p-2 border rounded-md" /></div>
                     </div>
                      <div>
                         <label>Image URL</label>
                         <input type="text" value={current?.imageUrl || ''} onChange={e => setCurrent({...current, imageUrl: e.target.value})} className="w-full p-2 border rounded-md" required/>
                     </div>
-                    <button type="submit" className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4">Save</button>
+                    <div>
+                        <label>Description</label>
+                        <textarea value={current?.description || ''} onChange={e => setCurrent({...current, description: e.target.value})} className="w-full p-2 border rounded-md" rows={4}/>
+                    </div>
+                    <button type="submit" disabled={isSaving} className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4 disabled:bg-gray-400">
+                      {isSaving ? 'Saving...' : 'Save'}
+                    </button>
                 </form>
             </Modal>
         </div>
@@ -442,6 +510,7 @@ const ManageTestimonials: React.FC = () => {
     const { testimonials, setTestimonials } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [current, setCurrent] = useState<Partial<Testimonial> | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const openModal = (item: Partial<Testimonial> | null = null) => {
         setCurrent(item || { quote: '', clientName: '', clientRole: '', clientImage: '', rating: 5 });
@@ -453,23 +522,53 @@ const ManageTestimonials: React.FC = () => {
         setCurrent(null);
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!current) return;
-        setTestimonials(prev => {
-            if (current.id) {
-                return prev.map(t => t.id === current.id ? current as Testimonial : t);
-            } else {
-                const newId = Math.max(0, ...prev.map(t => t.id)) + 1;
-                return [...prev, { ...current, id: newId } as Testimonial];
+        setIsSaving(true);
+        try {
+            const testimonialData = {
+                quote: current.quote,
+                clientName: current.clientName,
+                clientRole: current.clientRole,
+                clientImage: current.clientImage,
+                rating: current.rating,
+            };
+            
+            if (!testimonialData.rating || isNaN(testimonialData.rating) || testimonialData.rating < 1 || testimonialData.rating > 5) {
+                throw new Error("Rating must be a number between 1 and 5.");
             }
-        });
-        closeModal();
+
+            if (current.id) { // Update
+                const { data, error } = await supabase.from('testimonials').update(testimonialData).eq('id', current.id).select().single();
+                if (error) throw error;
+                setTestimonials(prev => prev.map(t => t.id === data.id ? data : t));
+            } else { // Insert
+                const { data, error } = await supabase.from('testimonials').insert(testimonialData).select().single();
+                if (error) throw error;
+                setTestimonials(prev => [...prev, data]);
+            }
+            closeModal();
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error('Error saving testimonial:', error);
+            alert(`Failed to save testimonial. Error: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this testimonial?')) {
-            setTestimonials(prev => prev.filter(t => t.id !== id));
+            try {
+                const { error } = await supabase.from('testimonials').delete().eq('id', id);
+                if (error) throw error;
+                setTestimonials(prev => prev.filter(t => t.id !== id));
+            } catch (error) {
+                const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+                console.error('Error deleting testimonial:', error);
+                alert(`Failed to delete testimonial. Error: ${errorMessage}`);
+            }
         }
     };
     
@@ -497,7 +596,7 @@ const ManageTestimonials: React.FC = () => {
                                 <td className="p-4 align-top">{item.rating}/5</td>
                                 <td className="p-4 align-top">
                                     <button onClick={() => openModal(item)} className="text-blue-600 hover:underline mr-4">Edit</button>
-                                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <button onClick={() => handleDelete(item.id!)} className="text-red-600 hover:underline">Delete</button>
                                 </td>
                             </tr>
                         ))}
@@ -525,9 +624,11 @@ const ManageTestimonials: React.FC = () => {
                     </div>
                     <div>
                         <label>Rating (1-5)</label>
-                        <input type="number" min="1" max="5" value={current?.rating || 5} onChange={e => setCurrent({...current, rating: parseInt(e.target.value)})} className="w-full p-2 border rounded-md" required />
+                        <input type="number" min="1" max="5" value={current?.rating ?? ''} onChange={e => setCurrent({...current, rating: parseInt(e.target.value, 10) || 5})} className="w-full p-2 border rounded-md" required />
                     </div>
-                    <button type="submit" className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4">Save</button>
+                    <button type="submit" disabled={isSaving} className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4 disabled:bg-gray-400">
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
                 </form>
             </Modal>
         </div>
@@ -538,17 +639,31 @@ const ManageTestimonials: React.FC = () => {
 const ManageContactInfo: React.FC = () => {
     const { contactInfo, setContactInfo } = useData();
     const [formData, setFormData] = useState<ContactInfo>(contactInfo);
+    const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
         setFormData(contactInfo);
     }, [contactInfo]);
     
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setContactInfo(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        setIsSaving(true);
+        setSaved(false);
+        try {
+            const { id, ...updateData } = formData;
+            const { data, error } = await supabase.from('contact_info').update(updateData).eq('id', id).select().single();
+            if (error) throw error;
+            setContactInfo(data);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch (error) {
+            const errorMessage = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : JSON.stringify(error);
+            console.error('Error saving contact info:', error);
+            alert(`Failed to save contact info. Error: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -570,7 +685,9 @@ const ManageContactInfo: React.FC = () => {
                     </div>
                     <div className="flex justify-end items-center pt-4">
                         {saved && <span className="text-green-600 mr-4 font-semibold">Saved successfully!</span>}
-                        <button type="submit" className="bg-secondary text-white py-2 px-6 rounded-md font-bold hover:bg-opacity-90">Save Changes</button>
+                        <button type="submit" disabled={isSaving} className="bg-secondary text-white py-2 px-6 rounded-md font-bold hover:bg-opacity-90 disabled:bg-gray-400">
+                            {isSaving ? 'Saving...' : 'Save Changes'}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -601,6 +718,25 @@ const AdminPanel: React.FC = () => {
     const serviceFields: FormField[] = [ { name: 'title', label: 'Service Title', type: 'text', required: true }, { name: 'description', label: 'Description', type: 'textarea', required: true }, { name: 'icon', label: 'Icon', type: 'icon-select', required: true } ];
     const benefitFields: FormField[] = [ { name: 'title', label: 'Benefit Title', type: 'text', required: true }, { name: 'description', label: 'Description', type: 'textarea', required: true }, { name: 'icon', label: 'Icon', type: 'icon-select', required: true } ];
   
+    const createSaveHandler = (tableName: string, setItems: React.Dispatch<React.SetStateAction<any[]>>) => async (item: any) => {
+        const { id, ...updateData } = item;
+        if (id) { // Update
+            const { data, error } = await supabase.from(tableName).update(updateData).eq('id', id).select().single();
+            if (error) throw error;
+            setItems(prev => prev.map(i => i.id === data.id ? data : i));
+        } else { // Insert
+            const { data, error } = await supabase.from(tableName).insert(updateData).select().single();
+            if (error) throw error;
+            setItems(prev => [...prev, data]);
+        }
+    };
+
+    const createDeleteHandler = (tableName: string, setItems: React.Dispatch<React.SetStateAction<any[]>>) => async (id: number) => {
+        const { error } = await supabase.from(tableName).delete().eq('id', id);
+        if (error) throw error;
+        setItems(prev => prev.filter(i => i.id !== id));
+    };
+
     const renderContent = () => {
       switch(activeTab) {
           case 'Overview': return <DashboardOverview />;
@@ -608,9 +744,9 @@ const AdminPanel: React.FC = () => {
           case 'Properties': return <ManageProperties />;
           case 'Testimonials': return <ManageTestimonials />;
           case 'Contact Info': return <ManageContactInfo />;
-          case 'Categories': return <ManageSection title="Categories" items={categories} setItems={setCategories} formFields={categoryFields} noun="Category" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-primary"/>}, {header: 'Name', accessor: item => item.name}]}/>;
-          case 'Services': return <ManageSection title="Services" items={services} setItems={setServices} formFields={serviceFields} noun="Service" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-secondary"/>}, {header: 'Title', accessor: item => item.title}, {header: 'Description', accessor: item => item.description}]}/>;
-          case 'Benefits': return <ManageSection title="Benefits" items={benefits} setItems={setBenefits} formFields={benefitFields} noun="Benefit" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-secondary"/>}, {header: 'Title', accessor: item => item.title}, {header: 'Description', accessor: item => item.description}]}/>;
+          case 'Categories': return <ManageSection title="Categories" items={categories} onSave={createSaveHandler('categories', setCategories)} onDelete={createDeleteHandler('categories', setCategories)} formFields={categoryFields} noun="Category" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-primary"/>}, {header: 'Name', accessor: item => item.name}]}/>;
+          case 'Services': return <ManageSection title="Services" items={services} onSave={createSaveHandler('services', setServices)} onDelete={createDeleteHandler('services', setServices)} formFields={serviceFields} noun="Service" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-secondary"/>}, {header: 'Title', accessor: item => item.title}, {header: 'Description', accessor: item => item.description}]}/>;
+          case 'Benefits': return <ManageSection title="Benefits" items={benefits} onSave={createSaveHandler('benefits', setBenefits)} onDelete={createDeleteHandler('benefits', setBenefits)} formFields={benefitFields} noun="Benefit" displayColumns={[{header: 'Icon', accessor: item => <Icon name={item.icon} className="w-8 h-8 text-secondary"/>}, {header: 'Title', accessor: item => item.title}, {header: 'Description', accessor: item => item.description}]}/>;
           default: return null;
       }
   };

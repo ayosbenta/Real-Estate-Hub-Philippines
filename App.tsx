@@ -3,12 +3,18 @@ import React from 'react';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import AdminPanel from './pages/AdminPanel';
+import PropertyDetailPage from './pages/PropertyDetailPage';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { RouterProvider, useRouter } from './context/RouterContext';
 
 const AppContent: React.FC = () => {
   const { route } = useRouter();
+
+  if (route.startsWith('#/property/')) {
+    const id = route.split('/')[2];
+    return <PropertyDetailPage propertyId={id} />;
+  }
 
   switch (route) {
     case '#/admin':
