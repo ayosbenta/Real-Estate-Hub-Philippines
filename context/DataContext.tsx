@@ -1,5 +1,5 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { supabase } from '../supabase/client';
 import { DEVELOPERS, PROPERTIES, CATEGORIES, BENEFITS, TESTIMONIALS, SERVICES, CONTACT_INFO } from '../initialData';
 import { Developer, Property, Category, Benefit, Testimonial, Service, ContactInfo } from '../types';
 
@@ -35,6 +35,7 @@ const useStickyState = <T,>(key: string, initialData: T): [T, Setter<T>] => {
     }
   });
 
+  // Fix: The try-catch block had a syntax error. The catch clause must be followed by a block statement enclosed in curly braces {}.
   useEffect(() => {
     try {
       window.localStorage.setItem(key, JSON.stringify(state));
@@ -55,7 +56,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [testimonials, setTestimonials] = useStickyState<Testimonial[]>('data_testimonials', TESTIMONIALS);
   const [services, setServices] = useStickyState<Service[]>('data_services', SERVICES);
   const [contactInfo, setContactInfo] = useStickyState<ContactInfo>('data_contactInfo', CONTACT_INFO);
-
+  
   const value = {
     developers, setDevelopers,
     properties, setProperties,

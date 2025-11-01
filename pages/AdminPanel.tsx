@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Developer, Testimonial, Property, Category, Benefit, Service, ContactInfo, IconName } from '../types';
 import { Icon } from '../constants';
 import { useRouter } from '../context/RouterContext';
-import { GOOGLE_APPS_SCRIPT_URL } from '../config';
 
 // --- Reusable Modal Component ---
 const Modal: React.FC<{ title: string, isOpen: boolean, onClose: () => void, children: React.ReactNode }> = ({ title, isOpen, onClose, children }) => {
@@ -206,138 +204,47 @@ const ManageDevelopers: React.FC = () => {
     const { developers, setDevelopers } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentDeveloper, setCurrentDeveloper] = useState<Partial<Developer> | null>(null);
-    const [logoFile, setLogoFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [logoInputMethod, setLogoInputMethod] = useState<'upload' | 'url'>('upload');
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
 
     const openModal = (dev: Partial<Developer> | null = null) => {
-        const developerData = dev || { name: '', logoUrl: '', badge: '' };
+        const developerData = dev || { name: '', logoUrl: '', badge: '', projects: [] };
         setCurrentDeveloper(developerData);
-        setLogoFile(null);
-        setPreviewUrl(developerData.logoUrl || null);
-        setLogoInputMethod(developerData.logoUrl ? 'url' : 'upload');
-        setSaveError(null);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setCurrentDeveloper(null);
-        setLogoFile(null);
-        setPreviewUrl(null);
     };
     
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const url = e.target.value;
-        if (currentDeveloper) {
-            setCurrentDeveloper({ ...currentDeveloper, logoUrl: url });
-        }
-        setPreviewUrl(url);
-        setLogoFile(null);
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setLogoFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
-            if (currentDeveloper) {
-                setCurrentDeveloper({ ...currentDeveloper, logoUrl: '' });
-            }
-        }
-    };
-    
-    const fileToBase64 = (file: File): Promise<{base64: string, type: string, name: string}> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                const result = reader.result as string;
-                const base64 = result.split(',')[1];
-                resolve({ base64, type: file.type, name: file.name });
-            };
-            reader.onerror = error => reject(error);
-        });
-    };
-
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentDeveloper) return;
-        
-        setIsSaving(true);
-        setSaveError(null);
-
-        try {
-            if ((GOOGLE_APPS_SCRIPT_URL as string) === 'PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE') {
-                throw new Error("Google Apps Script URL is not configured. Please add it to config.ts.");
-            }
-
-            let payload: any = { ...currentDeveloper };
-            
-            if (logoFile) {
-                const fileData = await fileToBase64(logoFile);
-                payload.logoFile = fileData;
-            }
-
-            const formData = new FormData();
-            formData.append('payload', JSON.stringify(payload));
-
-            const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.status === 'error') {
-                throw new Error(result.message);
-            }
-
-            const savedDeveloper = result.developer;
-
-            setDevelopers(prev => {
-                const existing = prev.find(d => d.id === savedDeveloper.id);
-                if (existing) { // Update
-                    return prev.map(d => d.id === savedDeveloper.id ? { ...existing, ...savedDeveloper } : d);
-                } else { // Add
-                    return [...prev, { ...savedDeveloper, projects: [] }];
-                }
-            });
-            
-            closeModal();
-
-        } catch (error) {
-            console.error("Failed to save developer:", error);
-            setSaveError(error instanceof Error ? error.message : 'An unknown error occurred.');
-        } finally {
-            setIsSaving(false);
+        if (!currentDeveloper || !currentDeveloper.name) {
+            alert('Developer name is required.');
+            return;
         }
+
+        setDevelopers(prev => {
+            if (currentDeveloper.id) {
+                return prev.map(d => d.id === currentDeveloper.id ? currentDeveloper as Developer : d);
+            } else {
+                const newDeveloper: Developer = {
+                    projects: [],
+                    ...currentDeveloper,
+                    id: Date.now(), // Use timestamp for a simple unique ID
+                } as Developer;
+                return [...prev, newDeveloper];
+            }
+        });
+        
+        closeModal();
     };
     
     const handleDelete = (id: number) => {
-        if (window.confirm('Are you sure you want to delete this developer? This will not delete it from your Google Sheet.')) {
-            // This only removes it from the local view. A full implementation would
-            // also make a DELETE request to the Apps Script backend.
-            setDevelopers(prev => prev.filter(d => d.id !== id));
+        if (!window.confirm('Are you sure you want to delete this developer?')) {
+            return;
         }
+        setDevelopers(prev => prev.filter(d => d.id !== id));
     };
-    
-    const InputMethodToggle: React.FC = () => (
-      <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-1 w-min">
-        <button type="button" onClick={() => setLogoInputMethod('upload')} className={`px-4 py-1 rounded-md text-sm font-medium transition-colors ${logoInputMethod === 'upload' ? 'bg-secondary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-          Upload
-        </button>
-        <button type="button" onClick={() => setLogoInputMethod('url')} className={`px-4 py-1 rounded-md text-sm font-medium transition-colors ${logoInputMethod === 'url' ? 'bg-secondary text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
-          URL
-        </button>
-      </div>
-    );
 
     return (
         <div>
@@ -378,23 +285,13 @@ const ManageDevelopers: React.FC = () => {
                         <input type="text" value={currentDeveloper?.name || ''} onChange={e => setCurrentDeveloper({...currentDeveloper, name: e.target.value})} className="w-full p-2 border rounded-md" required />
                     </div>
                     <div>
-                        <div className="flex justify-between items-center mb-2">
-                           <label className="block text-sm font-medium text-gray-700">Logo</label>
-                           <InputMethodToggle />
-                        </div>
-                        <div className="mt-1 flex items-center space-x-4">
-                            <div className="w-24 h-24 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
-                               {previewUrl ? <img src={previewUrl} alt="Logo Preview" className="h-full w-full object-contain" /> : <span className="text-xs text-gray-500">Preview</span>}
+                        <label className="block text-sm font-medium text-gray-700">Logo URL</label>
+                        <input type="url" placeholder="https://example.com/logo.png" value={currentDeveloper?.logoUrl || ''} onChange={e => setCurrentDeveloper({...currentDeveloper, logoUrl: e.target.value})} className="w-full p-2 border rounded-md" />
+                         {currentDeveloper?.logoUrl && (
+                            <div className="mt-2 p-2 border rounded-md inline-block">
+                                <img src={currentDeveloper.logoUrl} alt="Logo Preview" className="h-20 w-auto bg-gray-100 rounded-sm" />
                             </div>
-                            <div className="flex-1">
-                                {logoInputMethod === 'upload' ? (
-                                    <input type="file" accept="image/*" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-white hover:file:bg-opacity-90"/>
-                                ) : (
-                                    <input type="url" placeholder="https://example.com/logo.png" value={currentDeveloper?.logoUrl || ''} onChange={handleUrlChange} className="w-full p-2 border rounded-md" />
-                                )}
-                            </div>
-                        </div>
-                         {!currentDeveloper?.id && !logoFile && logoInputMethod === 'upload' && <p className="text-xs text-gray-500 mt-1">A logo image is required for new developers.</p>}
+                         )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Badge</label>
@@ -405,9 +302,8 @@ const ManageDevelopers: React.FC = () => {
                             <option value="Most Trusted">Most Trusted</option>
                         </select>
                     </div>
-                    {saveError && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md text-sm"><p className="font-bold">Save Failed</p><p>{saveError}</p></div>}
-                    <button type="submit" disabled={isSaving} className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4 disabled:bg-opacity-50 disabled:cursor-not-allowed">
-                        {isSaving ? 'Saving...' : 'Save'}
+                    <button type="submit" className="w-full bg-secondary text-white py-3 rounded-md font-bold mt-4">
+                        Save
                     </button>
                 </form>
             </Modal>
